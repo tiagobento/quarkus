@@ -83,7 +83,7 @@ public class MavenArtifactResolver {
     protected final RepositorySystem repoSystem;
     protected final RepositorySystemSession repoSession;
     protected final List<RemoteRepository> remoteRepos;
-    protected final MavenLocalRepositoryManager localRepoManager;
+    protected final LocalRepositoryManagerWithRelink localRepoManager;
     protected final RemoteRepositoryManager remoteRepoManager;
 
     private MavenArtifactResolver(Builder builder) throws BootstrapMavenException {
@@ -96,13 +96,15 @@ public class MavenArtifactResolver {
             builder.secondaryLocalRepo = Paths.get(secondaryRepo);
         }
         if (builder.secondaryLocalRepo != null) {
-            localRepoManager = new MavenLocalRepositoryManager(
+            localRepoManager = new LocalRepositoryManagerWithSecondaryRepo(
                     session.getLocalRepositoryManager(),
                     builder.secondaryLocalRepo);
             this.repoSession = new DefaultRepositorySystemSession(session).setLocalRepositoryManager(localRepoManager);
         } else {
-            this.repoSession = session;
-            localRepoManager = null;
+            System.out.println("Tiago2");
+            localRepoManager = new DelegatingLocalRepositoryManager(
+                    session.getLocalRepositoryManager());
+            this.repoSession = new DefaultRepositorySystemSession(session).setLocalRepositoryManager(localRepoManager);
         }
 
         this.remoteRepos = context.getRemoteRepositories();
@@ -113,7 +115,9 @@ public class MavenArtifactResolver {
         this.context = mvnSettings;
         this.repoSystem = mvnSettings.getRepositorySystem();
         this.repoSession = mvnSettings.getRepositorySystemSession();
-        localRepoManager = null;
+        System.out.println("Tiago3");
+        localRepoManager = new DelegatingLocalRepositoryManager(
+                context.getRepositorySystemSession().getLocalRepositoryManager());
         this.remoteRepos = mvnSettings.getRemoteRepositories();
         this.remoteRepoManager = mvnSettings.getRemoteRepositoryManager();
     }
@@ -130,7 +134,7 @@ public class MavenArtifactResolver {
         return remoteRepoManager;
     }
 
-    public MavenLocalRepositoryManager getLocalRepositoryManager() {
+    public LocalRepositoryManagerWithRelink getLocalRepositoryManager() {
         return localRepoManager;
     }
 

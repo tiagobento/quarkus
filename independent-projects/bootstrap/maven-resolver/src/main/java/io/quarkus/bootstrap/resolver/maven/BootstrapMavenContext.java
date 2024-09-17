@@ -6,16 +6,10 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.apache.maven.cli.transfer.BatchModeMavenTransferListener;
 import org.apache.maven.cli.transfer.ConsoleMavenTransferListener;
@@ -67,10 +61,7 @@ import org.eclipse.aether.repository.RepositoryPolicy;
 import org.eclipse.aether.resolution.ArtifactDescriptorException;
 import org.eclipse.aether.resolution.ArtifactDescriptorRequest;
 import org.eclipse.aether.transfer.TransferListener;
-import org.eclipse.aether.util.repository.AuthenticationBuilder;
-import org.eclipse.aether.util.repository.DefaultAuthenticationSelector;
-import org.eclipse.aether.util.repository.DefaultMirrorSelector;
-import org.eclipse.aether.util.repository.DefaultProxySelector;
+import org.eclipse.aether.util.repository.*;
 import org.jboss.logging.Logger;
 
 import io.quarkus.bootstrap.resolver.maven.options.BootstrapMavenOptions;
@@ -371,6 +362,10 @@ public class BootstrapMavenContext {
         return localRepo == null ? new File(getUserMavenConfigurationHome(), "repository").getAbsolutePath() : localRepo;
     }
 
+    private String getLocalRepoTail() {
+        return Optional.ofNullable(getProperty("maven.repo.local.tail")).orElse("");
+    }
+
     private File resolveSettingsFile(String settingsArg, Supplier<File> supplier) {
         File userSettings;
         if (settingsArg != null) {
@@ -447,9 +442,19 @@ public class BootstrapMavenContext {
             }
             session.setMirrorSelector(ms);
         }
+
+        System.out.println("Tiago5");
         final String localRepoPath = getLocalRepo();
-        session.setLocalRepositoryManager(
-                getRepositorySystem().newLocalRepositoryManager(session, new LocalRepository(localRepoPath)));
+        session.setLocalRepositoryManager(new ChainedLocalRepositoryManager(
+                getRepositorySystem().newLocalRepositoryManager(session, new LocalRepository(localRepoPath)),
+                Arrays.stream(getLocalRepoTail().split(",")).map(lr -> {
+                    try {
+                        return getRepositorySystem().newLocalRepositoryManager(session, new LocalRepository(lr));
+                    } catch (BootstrapMavenException e) {
+                        throw new RuntimeException(e); // FIXME: Tiago -> Checked exception inside lambda.
+                    }
+                }).collect(Collectors.toList()),
+                false /* FIXME: Tiago -> Read this from properties too. */));
 
         session.setOffline(isOffline());
 

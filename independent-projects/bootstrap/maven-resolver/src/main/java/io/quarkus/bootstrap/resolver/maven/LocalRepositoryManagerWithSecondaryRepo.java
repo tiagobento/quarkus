@@ -23,13 +23,13 @@ import io.quarkus.bootstrap.util.IoUtils;
  *
  * @author Alexey Loubyansky
  */
-public class MavenLocalRepositoryManager implements LocalRepositoryManager {
+public class LocalRepositoryManagerWithSecondaryRepo implements LocalRepositoryManager, LocalRepositoryManagerWithRelink {
 
     private final LocalRepositoryManager delegate;
     private final Path secondaryRepo;
     private final Path originalRepo;
 
-    public MavenLocalRepositoryManager(LocalRepositoryManager delegate, Path secondaryRepo) {
+    public LocalRepositoryManagerWithSecondaryRepo(LocalRepositoryManager delegate, Path secondaryRepo) {
         this.delegate = delegate;
         this.secondaryRepo = secondaryRepo;
         this.originalRepo = delegate.getRepository().getBasedir().toPath();
